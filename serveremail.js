@@ -8,27 +8,7 @@ const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
-    // Responder a requisições OPTIONS (pre-flight)
-    if (req.method === 'OPTIONS') {
-        res.writeHead(204);
-        res.end();
-        return;
-    }
-
-    // Ignora requisições de favicon
-    if (req.url === '/favicon.ico') {
-        res.writeHead(204);
-        res.end();
-        return;
-    }
-
-    // Verifica se é uma requisição POST
-    if (req.method !== 'POST') {
-        res.writeHead(405);
-        res.end('Método não permitido. Use POST para enviar emails.');
-        return;
-    }
-
+    
     const auth = nodemailer.createTransport({
         service: 'gmail',
         secure: true,
