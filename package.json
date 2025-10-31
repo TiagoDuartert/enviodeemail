@@ -1,0 +1,14 @@
+{
+  "name": "email-server",
+  "version": "1.0.0",
+  "main": "serveremail.js",
+  "scripts": {
+    "start": "node serveremail.js"
+  },
+  "dependencies": {
+    "nodemailer": "^7.0.10"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
