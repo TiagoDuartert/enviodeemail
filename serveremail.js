@@ -50,6 +50,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Criar o transporter com timeouts para evitar bloqueios longos
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         secure: true,
@@ -57,26 +58,49 @@ const server = http.createServer((req, res) => {
         auth: {
             user: EMAIL_USER,
             pass: EMAIL_PASS
-        }
+        },
+        // timeouts (ms)
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000
     });
 
     const message = {
         from: EMAIL_USER,
         to: EMAIL_RECIPIENT,
-        subject: "Fatura Disponível",
-        text: "Olá, a sua fatura já está disponível"
+        subject: 'Fatura Disponível',
+        text: 'Olá, a sua fatura já está disponível'
     };
 
+    // Safety timeout: se sendMail demorar demais, responde ao cliente e tenta cancelar
+    let finished = false;
+    const safetyTimer = setTimeout(() => {
+        if (finished) return;
+        finished = true;
+        console.error('Timeout: envio de email excedeu o tempo limite');
+        try { res.writeHead(504); res.end('Gateway Timeout: envio de email demorou demais'); } catch (e) { /* ignore */ }
+    }, 20000); // 20s
+
     transporter.sendMail(message, (error, info) => {
-        if (error) {
-            console.error("Erro ao enviar email:", error);
-            res.writeHead(500);
-            res.end("Erro ao enviar email");
+        if (finished) {
+            // já respondemos por timeout
+            console.warn('Resposta já enviada por timeout — ignorando callback de sendMail');
             return;
         }
-        console.log("Email enviado com sucesso!", info.messageId);
+        finished = true;
+        clearTimeout(safetyTimer);
+
+        if (error) {
+            console.error('Erro ao enviar email:', error && (error.stack || error));
+            // retornar detalhes mínimos ao cliente (não expor segredos)
+            res.writeHead(500);
+            res.end('Erro ao enviar email: ' + (error && error.message ? error.message : 'unknown'));
+            return;
+        }
+
+        console.log('Email enviado com sucesso!', info && info.messageId);
         res.writeHead(200);
-        res.end("Email enviado com sucesso!");
+        res.end('Email enviado com sucesso!');
     });
 
 });
