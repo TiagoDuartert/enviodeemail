@@ -23,6 +23,11 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+// Verify transporter at startup to catch SMTP/auth problems early
+transporter.verify()
+    .then(() => console.log('SMTP transporter verified'))
+    .catch(err => console.error('SMTP transporter verification failed:', err));
+
 // Serve frontend
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
