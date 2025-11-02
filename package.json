@@ -1,15 +1,30 @@
 {
-  "name": "email-server",
+  "name": "envio-de-emials-teste",
   "version": "1.0.0",
-  "main": "serveremail.js",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "start": "node serveremail.js"
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TiagoDuartert/enviodeemail.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/TiagoDuartert/enviodeemail/issues"
+  },
+  "homepage": "https://github.com/TiagoDuartert/enviodeemail#readme",
   "dependencies": {
-    "nodemailer": "^7.0.10",
-    "@sendgrid/mail": "^7.7.0"
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.10"
   },
-  "engines": {
-    "node": ">=14.0.0"
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }

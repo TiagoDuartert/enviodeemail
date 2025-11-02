@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Enviar Email</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; max-width:700px; margin:40px auto; padding:0 16px; }
+    label { display:block; margin:8px 0 4px; }
+    input, textarea { width:100%; padding:8px; box-sizing:border-box; }
+    button { margin-top:12px; padding:10px 16px; }
+    #status { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h1>Enviar Email</h1>
+  <form id="emailForm">
+    <label for="to">Para (email)</label>
+    <input id="to" type="email" placeholder="destinatario@example.com" />
+
+    <label for="subject">Assunto</label>
+    <input id="subject" type="text" value="Fatura Disponível" />
+
+    <label for="text">Mensagem (texto)</label>
+    <textarea id="text" rows="6">Olá, sua fatura está disponível.</textarea>
+
+    <button type="submit">Enviar</button>
+  </form>
+  <div id="status"></div>
+
+  <script>
+    const form = document.getElementById('emailForm');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.textContent = 'Enviando...';
+
+      const payload = {
+        to: document.getElementById('to').value.trim(),
+        subject: document.getElementById('subject').value.trim(),
+        text: document.getElementById('text').value.trim()
+      };
+
+      try {
+        // If you're serving this file with Live Server (port 5500) the
+        // relative path '/send-email' will point to port 5500 which doesn't
+        // accept POST. Use the backend URL in that case.
+        const endpoint = (location.port === '5500') ? 'http://localhost:3000/send-email' : '/send-email';
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          status.textContent = 'Email enviado com sucesso!';
+        } else {
+          status.textContent = 'Erro: ' + (data.error || JSON.stringify(data));
+        }
+      } catch (err) {
+        status.textContent = 'Erro: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>
