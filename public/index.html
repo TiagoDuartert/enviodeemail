@@ -46,7 +46,12 @@
         // If you're serving this file with Live Server (port 5500) the
         // relative path '/send-email' will point to port 5500 which doesn't
         // accept POST. Use the backend URL in that case.
-        const endpoint = (location.port === '5500') ? 'http://localhost:3000/send-email' : '/send-email';
+        let endpoint = (location.port === '5500') ? 'https://enviodeemail.onrender.com' : '/send-email';
+        // Ensure the endpoint includes the '/send-email' path (avoids 405 when
+        // only the domain was configured in the HTML).
+        if (!endpoint.endsWith('/send-email')) {
+          endpoint = endpoint.replace(/\/+$/, '') + '/send-email';
+        }
 
         const res = await fetch(endpoint, {
           method: 'POST',
