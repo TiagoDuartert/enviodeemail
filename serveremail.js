@@ -10,7 +10,7 @@ const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || '*';
 const server = http.createServer((req, res) => {
     // Configurar cabeçalhos CORS
     res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
@@ -18,6 +18,13 @@ const server = http.createServer((req, res) => {
     if (req.method === 'OPTIONS') {
         res.writeHead(204);
         res.end();
+        return;
+    }
+
+    // Rota de health check para Render (aceita GET)
+    if (req.method === 'GET' && (req.url === '/' || req.url === '/health')) {
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end('OK');
         return;
     }
 
