@@ -1,5 +1,12 @@
 const http = require('http');
 const nodemailer = require('nodemailer');
+let sendgrid;
+try {
+    sendgrid = require('@sendgrid/mail');
+} catch (e) {
+    // will only be present if dependency installed
+    sendgrid = null;
+}
 
 // Ler variáveis de ambiente
 const EMAIL_USER = process.env.EMAIL_USER;
@@ -73,24 +80,56 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // Verifica se as variáveis de ambiente estão configuradas
+    // If SendGrid API key is present, use SendGrid API (works over HTTPS)
+    const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+    if (SENDGRID_API_KEY && sendgrid) {
+        sendgrid.setApiKey(SENDGRID_API_KEY);
+        const sgMessage = {
+            to: EMAIL_RECIPIENT,
+            from: EMAIL_USER,
+            subject: 'Fatura Disponível',
+            text: 'Olá, a sua fatura já está disponível'
+        };
+
+        try {
+            const sgPromise = sendgrid.send(sgMessage);
+            // respond with a timeout safety
+            const sgTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('SendGrid timeout')), 15000));
+            Promise.race([sgPromise, sgTimeout])
+                .then((result) => {
+                    console.log('Email enviado via SendGrid', result && result[0] && result[0].statusCode);
+                    res.writeHead(200);
+                    res.end('Email enviado com sucesso (SendGrid)');
+                })
+                .catch((err) => {
+                    console.error('SendGrid error:', err && (err.stack || err));
+                    res.writeHead(502);
+                    res.end('Erro no envio via SendGrid: ' + (err && err.message));
+                });
+            return;
+        } catch (err) {
+            console.error('SendGrid send threw:', err && (err.stack || err));
+            res.writeHead(502);
+            res.end('Erro interno no envio (SendGrid)');
+            return;
+        }
+    }
+
+    // Fallback: attempt SMTP via nodemailer (may be blocked on some hosts)
     if (!EMAIL_USER || !EMAIL_PASS) {
-        console.error('Erro: EMAIL_USER e EMAIL_PASS são obrigatórios');
+        console.error('Erro: EMAIL_USER e EMAIL_PASS são obrigatórios para SMTP');
         res.writeHead(500);
-        res.end('Erro de configuração do servidor');
+        res.end('Erro de configuração do servidor (SMTP)');
         return;
     }
 
-    // Criar o transporter com timeouts para evitar bloqueios longos
+    // Try STARTTLS on 587 first (more likely to pass through firewalls)
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        secure: true,
-        port: 465,
-        auth: {
-            user: EMAIL_USER,
-            pass: EMAIL_PASS
-        },
-        // timeouts (ms)
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        requireTLS: true,
+        auth: { user: EMAIL_USER, pass: EMAIL_PASS },
         connectionTimeout: 10000,
         greetingTimeout: 10000,
         socketTimeout: 20000
@@ -103,35 +142,27 @@ const server = http.createServer((req, res) => {
         text: 'Olá, a sua fatura já está disponível'
     };
 
-    // Safety timeout: se sendMail demorar demais, responde ao cliente e tenta cancelar
     let finished = false;
     const safetyTimer = setTimeout(() => {
         if (finished) return;
         finished = true;
-        console.error('Timeout: envio de email excedeu o tempo limite');
-        try { res.writeHead(504); res.end('Gateway Timeout: envio de email demorou demais'); } catch (e) { /* ignore */ }
-    }, 20000); // 20s
+        console.error('Timeout: envio de email excedeu o tempo limite (SMTP)');
+        try { res.writeHead(504); res.end('Gateway Timeout: envio de email demorou demais (SMTP)'); } catch (e) { /* ignore */ }
+    }, 20000);
 
     transporter.sendMail(message, (error, info) => {
-        if (finished) {
-            // já respondemos por timeout
-            console.warn('Resposta já enviada por timeout — ignorando callback de sendMail');
-            return;
-        }
+        if (finished) return;
         finished = true;
         clearTimeout(safetyTimer);
-
         if (error) {
-            console.error('Erro ao enviar email:', error && (error.stack || error));
-            // retornar detalhes mínimos ao cliente (não expor segredos)
+            console.error('Erro ao enviar email via SMTP:', error && (error.stack || error));
             res.writeHead(500);
-            res.end('Erro ao enviar email: ' + (error && error.message ? error.message : 'unknown'));
+            res.end('Erro ao enviar email (SMTP): ' + (error && error.message));
             return;
         }
-
-        console.log('Email enviado com sucesso!', info && info.messageId);
+        console.log('Email enviado com sucesso via SMTP!', info && info.messageId);
         res.writeHead(200);
-        res.end('Email enviado com sucesso!');
+        res.end('Email enviado com sucesso (SMTP)');
     });
 
 });

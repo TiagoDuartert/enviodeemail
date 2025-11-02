@@ -6,7 +6,8 @@
     "start": "node serveremail.js"
   },
   "dependencies": {
-    "nodemailer": "^7.0.10"
+    "nodemailer": "^7.0.10",
+    "@sendgrid/mail": "^7.7.0"
   },
   "engines": {
     "node": ">=14.0.0"
