@@ -28,6 +28,37 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Endpoint de verificação do transporter (útil para debug de autenticação SMTP)
+    if (req.method === 'GET' && req.url === '/test-verify') {
+        if (!EMAIL_USER || !EMAIL_PASS) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: 'EMAIL_USER ou EMAIL_PASS não definidos' }));
+            return;
+        }
+
+        const verifyTransporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: { user: EMAIL_USER, pass: EMAIL_PASS },
+            connectionTimeout: 10000,
+            greetingTimeout: 10000,
+            socketTimeout: 20000
+        });
+
+        verifyTransporter.verify((err, success) => {
+            if (err) {
+                console.error('test-verify: erro ao verificar transporter:', err && (err.stack || err));
+                res.writeHead(502, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ ok: false, message: 'Falha na verificação SMTP', error: err && (err.message || err) }));
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: true, message: 'Transporte SMTP verificado' }));
+        });
+        return;
+    }
+
     // Ignora requisições de favicon
     if (req.url === '/favicon.ico') {
         res.writeHead(204);
